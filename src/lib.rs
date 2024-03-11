@@ -1,4 +1,4 @@
-pub use array_based_queue_lock;
+mod array_based_queue_lock;
 
 #[cfg(test)]
 mod tests {
