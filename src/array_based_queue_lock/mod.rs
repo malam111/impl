@@ -15,11 +15,11 @@ enum Qerror {
 }
 
 pub struct InnerQ {
+    // static sized?
     queue: Vec<Qstat>,
     last_q: usize,
     load: usize,
 }
-
 
 pub struct Qlock {
     inner: sync::Mutex<()>,
@@ -48,13 +48,13 @@ impl Qlock {
         }
     }
 
-    unsafe fn get_mut(&self) -> &mut InnerQ {
-        &mut *self.data.get() 
+    fn get_mut(&self) -> &mut InnerQ {
+        unsafe { &mut *self.data.get() }
     }
 
     pub fn queue(&self, idx: usize) -> Result<usize, Qerror> {
         let _lock = self.inner.lock().unwrap();
-        let mut innerq = unsafe { self.get_mut() };
+        let mut innerq = self.get_mut();
         if innerq.queue[innerq.last_q] == Qstat::Wait {
             return Err(Qerror::OutOfTicket);
         }
@@ -73,7 +73,7 @@ impl Qlock {
     // ticket, need a wrapper
     pub fn check(&self, ticket: usize, idx: usize) -> bool {
         let _lock = self.inner.lock().unwrap();
-        let mut innerq = unsafe { self.get_mut() };
+        let mut innerq = self.get_mut();
         if innerq.queue[ticket] != Qstat::Go { 
             std::hint::spin_loop(); return false; }
         Self::log(format!("C{}", idx).as_str(), innerq);
@@ -82,7 +82,7 @@ impl Qlock {
 
     pub fn unlock(&self, ticket: usize, idx: usize) {
         let _lock = self.inner.lock().unwrap();
-        let mut innerq = unsafe { self.get_mut() };
+        let mut innerq = self.get_mut();
         let next = (ticket + 1) % innerq.queue.capacity();
         if innerq.queue[next] == Qstat::Wait {
             innerq.queue[next] = Qstat::Go;
